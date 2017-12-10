@@ -1,0 +1,70 @@
+module max7219 (
+    input clk,  // clock
+    input rst,  // reset
+    input addr_in[8],
+    input din[8],
+    input start,
+    output cs, // Load
+    output dout,
+    output sck,
+    output busy
+  ) {
+  
+  .clk(clk) {
+    .rst(rst) {
+      fsm state(#INIT(IDLE)) = {IDLE, TRANSFER_ADDR, TRANSFER_DATA};
+      spi_master spi(.miso(0));
+      dff data[8];
+      dff addr[8];
+      dff load_state;
+    }
+  }
+  
+  sig data_out[8];
+  sig mosi;
+  counter count;
+  
+  always {
+    sck = spi.sck;
+    count.clk = spi.sck;
+    count.rst = 0;
+    
+    data_out = 8b0;
+    spi.start = 0;
+    mosi = 0;
+    busy = state.q != state.IDLE; // busy when not idle
+    dout = 0;
+    
+    case(state.q) {
+      state.IDLE:
+        load_state.d = 1;
+        if (start) {
+          addr.d = addr_in;
+          data.d = din;
+          count.rst = 1;
+          
+          load_state.d = 0;
+          
+          state.d = state.TRANSFER_ADDR;
+        }
+      state.TRANSFER_ADDR:
+        spi.start = 1;
+        data_out = addr.q;
+        dout = spi.mosi;
+        if(count.value == 8) {
+          state.d = state.TRANSFER_DATA;
+        }
+      state.TRANSFER_DATA:
+        spi.start = 1;
+        data_out = data.q;
+        dout = spi.mosi;
+        if(count.value == 16) {
+          load_state.d = 1;
+          state.d = state.IDLE;
+        }
+    }
+    
+    cs = load_state.q;
+    spi.data_in = data_out;
+  }
+}

@@ -3,6 +3,10 @@ This repository contains the projects from my YouTube series "FPGA For Fun".
 
 [FPGA For Fun on YouTube](https://www.youtube.com/watch?v=zz5LcePfOQQ&list=PLvjPFbXWvgn14EgnAEdoSsUGyvJHAAlav)
 
+### Max7219YouTube Project
+
+This project is from the first two videos and covers the initial wiring of the Max7219 8-digit 7-segment display module. It contains the Lucid HDL code for the implementation as well as the transpiled Verilog source.
+
 ### Max7219 Counter
 ![FPGA Counter](https://github.com/cerkit/FPGAForFun/blob/master/Max7219Counter/diagrams/FunWithFPGACounter.png?raw=true)
 

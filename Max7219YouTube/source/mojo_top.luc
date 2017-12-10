@@ -1,0 +1,135 @@
+module mojo_top (
+    input clk,              // 50MHz clock
+    input rst_n,            // reset button (active low)
+    output led [8],         // 8 user controllable LEDs
+    input cclk,             // configuration clock, AVR ready when high
+    output spi_miso,        // AVR SPI MISO
+    input spi_ss,           // AVR SPI Slave Select
+    input spi_mosi,         // AVR SPI MOSI
+    input spi_sck,          // AVR SPI Clock
+    output spi_channel [4], // AVR general purpose pins (used by default to select ADC channel)
+    input avr_tx,           // AVR TX (FPGA RX)
+    output avr_rx,          // AVR RX (FPGA TX)
+    input avr_rx_busy,       // AVR RX buffer full
+    output max7219_load,
+    output max7219_data,
+    output max7219_clock
+  ) {
+  
+  sig rst;                  // reset signal
+  
+  .clk(clk) {
+    // The reset conditioner is used to synchronize the reset signal to the FPGA
+    // clock. This ensures the entire FPGA comes out of reset at the same time.
+    reset_conditioner reset_cond;
+    
+    .rst(rst) {
+      max7219 max;
+      fsm state(#INIT(IDLE)) = {IDLE, SEND_SHUTDOWN, SEND_RESET, SEND_NO_DECODE, SEND_ALL_DIGITS, SEND_WORD, HALT};
+      dff segments[8][8];
+      dff segment_index[3];
+    }
+  }
+  
+  sig max_addr[8];
+  sig max_data[8];
+  
+  const C0 = b01111110;
+  const C1 = b00110000;
+  const C2 = b01101101;
+  const C3 = b01111001;
+  const C4 = b00110011;
+  const C5 = b01011011;
+  const C6 = b01011111;
+  const C7 = b01110000;
+  const C8 = b01111111;
+  const C9 = b01111011;
+  const A = b01110111;
+  const B = b00011111;
+  const C = b01001110;
+  const D = b00111101;
+  const E = b01001111;
+  const F = b01000111;
+  const O = b00011101; // O
+  const R = b00000101; // R
+  const MINUS = b01000000; // -
+  const BLANK = b00000000; // BLANK
+  
+  always {
+    segments.d[7] = D;
+    segments.d[6] = E;
+    segments.d[5] = A;
+    segments.d[4] = D;
+    segments.d[3] = B;
+    segments.d[2] = E;
+    segments.d[1] = E;
+    segments.d[0] = F;
+    
+    reset_cond.in = ~rst_n; // input raw inverted reset signal
+    rst = reset_cond.out;   // conditioned reset
+    
+    led = 8h00;             // turn LEDs off
+    spi_miso = bz;          // not using SPI
+    spi_channel = bzzzz;    // not using flags
+    avr_rx = bz;            // not using serial port
+    max_addr = 8b0;
+    max_data = 8b0;
+    max.start = 0;
+    
+    case(state.q) {
+      state.IDLE:
+        segment_index.d = 0;
+        state.d = state.SEND_SHUTDOWN;
+      state.SEND_SHUTDOWN:
+        max.start = 1;
+        max_addr = h0C;
+        max_data = h00;
+        if(max.busy != 1){
+          state.d = state.SEND_RESET;
+        }
+      state.SEND_RESET:
+        max.start = 1;
+        max_addr = h0C;
+        max_data = h01;
+        if(max.busy != 1){
+          state.d = state.SEND_NO_DECODE;
+        }
+      state.SEND_NO_DECODE:
+        max.start = 1;
+        max_addr = h09;
+        max_data = 0;
+        if(max.busy != 1){
+          state.d = state.SEND_ALL_DIGITS;
+        }
+      state.SEND_ALL_DIGITS:
+        max.start = 1;
+        max_addr = h0B;
+        max_data = h07;
+        if(max.busy != 1){
+          state.d = state.SEND_WORD;
+        }
+      state.SEND_WORD:
+        if(segment_index.q < 8) {
+          max.start = 1;
+          max_addr = segment_index.q + 1;
+          max_data = segments.q[segment_index.q];
+          if(max.busy != 1){
+            segment_index.d = segment_index.q + 1;
+          }
+        }
+        else {
+          segment_index.d = 0;
+          state.d = state.HALT;
+        }
+      state.HALT:
+        max_addr = 8b0;
+        max_data = 8b0;
+    }
+    
+    max.addr_in = max_addr;
+    max.din = max_data;
+    max7219_clock = max.sck;
+    max7219_data = max.dout;
+    max7219_load = max.cs;
+  }
+}
