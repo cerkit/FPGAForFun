@@ -5,6 +5,8 @@ This repository contains the projects from my YouTube series "FPGA For Fun".
 
 ### Max7219YouTube Project
 
+![0xDEADBEEF](https://raw.githubusercontent.com/cerkit/FPGAForFun/master/Max7219YouTube/diagrams/0xDEADBEEF_Example.JPG)
+
 This project is from the first two videos and covers the initial wiring of the Max7219 8-digit 7-segment display module. It contains the Lucid HDL code for the implementation as well as the transpiled [Verilog source](https://github.com/cerkit/FPGAForFun/tree/master/Max7219YouTube/work/verilog).
 
 ### Max7219 Counter
