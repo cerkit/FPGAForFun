@@ -1,0 +1,22 @@
+module multi_base_ctr #(
+    DIGITS = 8 : DIGITS >= 2,  // number of digits
+    BASE = 10 : BASE >= 2 && BASE <= 16
+  ) (
+    input clk,                // clock
+    input rst,                // reset
+    input inc,                // increment counter
+    output digits[DIGITS][5]  // digit values
+  ) {
+ 
+  .clk(clk), .rst(rst) {
+    base_ctr dctr [DIGITS] (#BASE(BASE)); // digit counters
+  }
+ 
+  always {
+    dctr.inc[0] = inc;   // increment the first digit
+    digits = dctr.value; // output the values
+ 
+    // if the previous digit overflows, increment the next
+    dctr.inc[1+:DIGITS-1] = dctr.ovf[0+:DIGITS-1];
+  }
+}
